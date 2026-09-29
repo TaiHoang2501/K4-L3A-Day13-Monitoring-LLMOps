@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K4-L3A Day 13 Monitoring &amp; LLMOps Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-purple: #c084fc;
+      --accent-amber: #fbbf24;
+      --accent-red: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg-primary); color: var(--text-main); padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; font-weight: 700; color: #fff; }
+    .meta-badges { display: flex; gap: 12px; }
+    .badge { background: #334155; padding: 6px 12px; border-radius: 6px; font-size: 13px; color: var(--text-muted); }
+    .badge span { color: var(--accent-blue); font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    @media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
+    .panel-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .panel-title { font-size: 15px; font-weight: 600; color: #e2e8f0; }
+    .panel-unit { font-size: 12px; color: var(--text-muted); }
+    .stats-row { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .stat-item { display: flex; flex-direction: column; }
+    .stat-val { font-size: 20px; font-weight: 700; color: #fff; }
+    .stat-lbl { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+    .chart-container { position: relative; height: 160px; width: 100%; margin-top: auto; }
+    .threshold-badge { margin-top: 10px; font-size: 12px; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; width: fit-content; }
+    .threshold-pass { background: rgba(74, 222, 128, 0.15); color: var(--accent-green); border: 1px solid rgba(74, 222, 128, 0.3); }
+    .threshold-fail { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); border: 1px solid rgba(248, 113, 113, 0.3); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>K4-L3A Day 13 Monitoring &amp; LLMOps</h1>
+      <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Production Service Observability Dashboard</p>
+    </div>
+    <div class="meta-badges">
+      <div class="badge">Time range: <span>60 minutes</span></div>
+      <div class="badge">Refresh: <span>30s</span></div>
+      <div class="badge">Status: <span style="color: var(--accent-green);">Live</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Panel 1: Latency & TTFT -->
+    <div class="panel" id="panel-latency">
+      <div class="panel-header">
+        <span class="panel-title">Latency percentiles and TTFT</span>
+        <span class="panel-unit">Unit: ms</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val">154.0</span><span class="stat-lbl">P50</span></div>
+        <div class="stat-item"><span class="stat-val">154.0</span><span class="stat-lbl">P95</span></div>
+        <div class="stat-item"><span class="stat-val">154.0</span><span class="stat-lbl">P99</span></div>
+        <div class="stat-item"><span class="stat-val" style="color: var(--accent-blue);">52.0</span><span class="stat-lbl">TTFT P95</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartLatency"></canvas></div>
+      <div class="threshold-badge threshold-pass">
+        Threshold: P95 &le; 3000 ms (PASS)
+      </div>
+    </div>
+
+    <!-- Panel 2: Request traffic -->
+    <div class="panel" id="panel-traffic">
+      <div class="panel-header">
+        <span class="panel-title">Request traffic</span>
+        <span class="panel-unit">Unit: requests_per_minute</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val">1</span><span class="stat-lbl">Total Reqs</span></div>
+        <div class="stat-item"><span class="stat-val">0.02</span><span class="stat-lbl">Rate / min</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartTraffic"></canvas></div>
+      <div class="threshold-badge threshold-fail">
+        Threshold: rate &ge; 1 req/min (Normal operational range)
+      </div>
+    </div>
+
+    <!-- Panel 3: Errors and retrieval -->
+    <div class="panel" id="panel-errors">
+      <div class="panel-header">
+        <span class="panel-title">Error rate and retrieval success</span>
+        <span class="panel-unit">Unit: percent</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val" style="color: var(--accent-green);">0.0%</span><span class="stat-lbl">Error Rate</span></div>
+        <div class="stat-item"><span class="stat-val">100.0%</span><span class="stat-lbl">Retrieval Success</span></div>
+        <div class="stat-item"><span class="stat-val">0</span><span class="stat-lbl">Failed Reqs</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartErrors"></canvas></div>
+      <div class="threshold-badge threshold-pass">
+        Threshold: error_rate &le; 2.0% (PASS)
+      </div>
+    </div>
+
+    <!-- Panel 4: Cost over time -->
+    <div class="panel" id="panel-cost">
+      <div class="panel-header">
+        <span class="panel-title">Cost over time</span>
+        <span class="panel-unit">Unit: usd</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val" style="color: var(--accent-amber);">$0.0016</span><span class="stat-lbl">Cumulative Total</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartCost"></canvas></div>
+      <div class="threshold-badge threshold-pass">
+        Threshold: Total Cost &le; $2.50 USD (PASS)
+      </div>
+    </div>
+
+    <!-- Panel 5: Input and output tokens -->
+    <div class="panel" id="panel-tokens">
+      <div class="panel-header">
+        <span class="panel-title">Input and output tokens</span>
+        <span class="panel-unit">Unit: tokens</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val">36</span><span class="stat-lbl">Tokens In</span></div>
+        <div class="stat-item"><span class="stat-val">99</span><span class="stat-lbl">Tokens Out</span></div>
+        <div class="stat-item"><span class="stat-val">135</span><span class="stat-lbl">Total</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartTokens"></canvas></div>
+      <div class="threshold-badge threshold-pass">
+        Threshold: Sum &le; 50,000 tokens (PASS)
+      </div>
+    </div>
+
+    <!-- Panel 6: Quality proxy -->
+    <div class="panel" id="panel-quality">
+      <div class="panel-header">
+        <span class="panel-title">Quality proxy</span>
+        <span class="panel-unit">Unit: score_0_to_1</span>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><span class="stat-val" style="color: var(--accent-purple);">0.8</span><span class="stat-lbl">Mean Score</span></div>
+      </div>
+      <div class="chart-container"><canvas id="chartQuality"></canvas></div>
+      <div class="threshold-badge threshold-pass">
+        Threshold: Mean &ge; 0.75 (PASS)
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+      }
+    };
+
+    // 1. Latency Chart
+    new Chart(document.getElementById('chartLatency'), {
+      type: 'bar',
+      data: {
+        labels: ['P50', 'P95', 'P99', 'TTFT P95', 'SLO (3000ms)'],
+        datasets: [{
+          label: 'Latency (ms)',
+          data: [154.0, 154.0, 154.0, 52.0, 3000],
+          backgroundColor: ['#38bdf8', '#818cf8', '#c084fc', '#4ade80', 'rgba(248, 113, 113, 0.4)'],
+          borderColor: ['#38bdf8', '#818cf8', '#c084fc', '#4ade80', '#f87171'],
+          borderWidth: 1
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // 2. Traffic Chart
+    new Chart(document.getElementById('chartTraffic'), {
+      type: 'line',
+      data: {
+        labels: ['-50m', '-40m', '-30m', '-20m', '-10m', 'Now'],
+        datasets: [{
+          label: 'Requests',
+          data: [0, 0, 2, 4, 10, 1],
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // 3. Errors Chart
+    new Chart(document.getElementById('chartErrors'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Success', 'Failed'],
+        datasets: [{
+          data: [1, 0],
+          backgroundColor: ['#4ade80', '#f87171'],
+          borderWidth: 0
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
+    });
+
+    // 4. Cost Chart
+    new Chart(document.getElementById('chartCost'), {
+      type: 'line',
+      data: {
+        labels: ['-50m', '-40m', '-30m', '-20m', '-10m', 'Now'],
+        datasets: [{
+          label: 'Cumulative Cost ($)',
+          data: [0, 0, 0.004, 0.008, 0.015, 0.001593],
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251, 191, 36, 0.1)',
+          fill: true
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // 5. Tokens Chart
+    new Chart(document.getElementById('chartTokens'), {
+      type: 'bar',
+      data: {
+        labels: ['Input Tokens', 'Output Tokens', 'Threshold (50k)'],
+        datasets: [{
+          label: 'Token Count',
+          data: [36, 99, 50000],
+          backgroundColor: ['#60a5fa', '#a78bfa', 'rgba(248, 113, 113, 0.3)'],
+          borderWidth: 1
+        }]
+      },
+      options: chartDefaults
+    });
+
+    // 6. Quality Chart
+    new Chart(document.getElementById('chartQuality'), {
+      type: 'bar',
+      data: {
+        labels: ['Mean Quality', 'Threshold (0.75)'],
+        datasets: [{
+          label: 'Score (0 - 1.0)',
+          data: [0.8, 0.75],
+          backgroundColor: ['#c084fc', 'rgba(74, 222, 128, 0.4)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        scales: {
+          ...chartDefaults.scales,
+          y: { min: 0, max: 1.0, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

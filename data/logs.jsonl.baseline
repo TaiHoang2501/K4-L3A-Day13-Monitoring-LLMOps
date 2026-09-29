@@ -1,0 +1,2 @@
+{"service": "day13-monitoring-llmops-lab", "env": "dev", "payload": {"tracing_enabled": false}, "event": "app_started", "level": "info", "ts": "2026-09-29T07:21:33.995496Z"}
+{"service": "day13-l3a-monitoring-llmops-lab", "env": "dev", "payload": {"tracing_enabled": true}, "event": "app_started", "level": "info", "ts": "2026-09-29T07:25:23.680713Z"}

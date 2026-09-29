@@ -1,25 +1,25 @@
 alerts:
-  - name: TODO_alert_1
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: HighErrorRate
+    severity: critical
+    condition: 'error_rate_pct > 2.0'
+    duration: 5m
     type: symptom-based
-    channel: slack
-    owner: TODO
+    channel: '#alerts-day13-critical'
+    owner: oncall-sre
     runbook: docs/alerts.md#alert-1
-  - name: TODO_alert_2
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: HighLatencyP95
+    severity: warning
+    condition: 'latency_p95_ms > 3000'
+    duration: 5m
     type: symptom-based
-    channel: slack
-    owner: TODO
+    channel: '#alerts-day13-latency'
+    owner: backend-team
     runbook: docs/alerts.md#alert-2
-  - name: TODO_alert_3
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: LowRetrievalSuccessRate
+    severity: warning
+    condition: 'retrieval_success_rate_pct < 90'
+    duration: 5m
     type: symptom-based
-    channel: slack
-    owner: TODO
+    channel: '#alerts-day13-rag'
+    owner: rag-platform-team
     runbook: docs/alerts.md#alert-3

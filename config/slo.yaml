@@ -7,9 +7,13 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình.
+  note: |
+    Ngưỡng latency_ms <= 3000ms được chọn dựa trên baseline P95 thực tế ~1400ms (biên độ an toàn gấp đôi cho network jitter),
+    nhưng sẽ vi phạm ngay khi có incident (như rag_slow tăng thêm 2500ms -> latency ~3900ms > 3000ms).
+    Error budget 0.5% trong cửa sổ 28 ngày cho phép tối đa 5 trên 1000 request bị chậm hoặc lỗi.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5
   quality_score_avg_min: 0.75
   retrieval_success_rate_pct_min: 90
+

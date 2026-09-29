@@ -5,6 +5,19 @@ from contextlib import contextmanager
 from typing import Any
 
 try:
+    import dotenv
+    dotenv.load_dotenv()
+except ImportError:
+    pass
+
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+except ImportError:
+    pass
+
+try:
     from langfuse import get_client, observe, propagate_attributes
 
     LANGFUSE_SDK_AVAILABLE = True
